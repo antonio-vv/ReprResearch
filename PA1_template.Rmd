@@ -1,0 +1,74 @@
+---
+title: "Course Project 1"
+author: "Antonio Vargas"
+date: "3/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+library(dplyr)
+library(ggplot2)
+Sys.setlocale(locale="English_United States")
+```
+
+## Loading and preprocessing the data
+Our data set is in a csv format file. We will print the first 5 records after the reading and the right formatting of our variables.
+```{r read}
+activity = read.csv("activity.csv")
+activity$date = as.Date(activity$date, "%Y-%m-%d")
+head(activity, 5)
+```
+
+## Total, mean and median of steps per day
+Building an histogram where is detailed the quantity of steps taken each day.
+```{r hist, echo=FALSE}
+data_graph = activity %>% group_by(date) %>% summarise(total.steps = sum(steps, na.rm = T))
+ggplot(data_graph, aes(date)) +
+  geom_histogram(aes(y = total.steps), stat = "identity", fill = "skyblue") +
+  theme_bw() + labs(title = "Total Steps per Day", x = "Date", y = "Number of Steps")
+```
+
+Calculating the mean and median of the total of steps per day.
+```{r mtc, echo=FALSE}
+data.frame(Mean = mean(data_graph$total.steps), Median = median(data_graph$total.steps))
+```
+
+## Average Daily Pattern
+
+```{r times}
+with(activity, plot(interval, steps, type = "l", col = "steelblue"))
+activity %>% arrange(desc(steps)) %>% head(., 1)
+```
+
+## Imputting missing values
+
+Here we have a table with the quantity of rows wth missing values
+```{r miss}
+activity %>% summarise(steps.NA = sum(is.na(steps)), date.NA = sum(is.na(date)), interval.NA = sum(is.na(interval)))
+```
+
+Given that we are measuring the steps on intervals of 5 minutes there is the possibility that the subject of study have not moved in the whole interval. Therefore the correct value to assume for the missing observations in the steps feature is zero.
+```{r full}
+activity_full = activity %>% mutate(steps = coalesce(steps, 0))
+head(activity_full)
+```
+
+Now we calculate the mean, median and total of steps given each day and plot the respective histogram.
+```{r new, echo = FALSE}
+data_graph_full = activity_full %>% group_by(date) %>% summarise(total.steps = sum(steps))
+ggplot(data_graph_full, aes(date)) +
+  geom_histogram(aes(y = total.steps), stat = "identity", fill = "skyblue") +
+  theme_bw() + labs(title = "Total Steps per Day", x = "Date", y = "Number of Steps")
+data.frame(Mean = mean(data_graph_full$total.steps), Median = median(data_graph_full$total.steps))
+```
+
+As we can see thre is no variation in the mean nor the median of the quantity of steps done per day.
+
+## Weekdays vs Weekends
+First we categorize the type of day (weekday or weekend) that we have in the data set
+```{r day, results='asis'}
+activity_day = activity_full %>% mutate(day = weekdays(date), 
+                                        week = ifelse(day == "Saturday" | day == "Sunday", "Weekend", "Weekday"))
+ggplot(activity_day, aes(interval, steps)) + geom_path(color = "Steelblue") + facet_wrap(week ~ .)
+```
